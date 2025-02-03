@@ -67,7 +67,7 @@ void HandleMouseWheel(HWND hwnd, int delta) {
 
         // 在文本框中显示日志
         std::wstringstream ss;
-        ss << L"当前透明度: " << currentTransparency << L"%\n";
+        ss << L"已将[" << hwnd << L"]的透明度设为 " << currentTransparency << L"%\n";
         std::wstring log = ss.str();
         SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
         SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
@@ -88,12 +88,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // 创建后台运行按钮
         g_hBackgroundButton = CreateWindow(L"BUTTON", L"后台运行",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
-            10, 220, 120, 30, hwnd, (HMENU)1, GetModuleHandle(NULL), NULL);
+            65, 220, 120, 30, hwnd, (HMENU)1, GetModuleHandle(NULL), NULL);
 
         // 创建退出按钮
         g_hExitButton = CreateWindow(L"BUTTON", L"退出",
             WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON,
-            140, 220, 120, 30, hwnd, (HMENU)2, GetModuleHandle(NULL), NULL);
+            200, 220, 120, 30, hwnd, (HMENU)2, GetModuleHandle(NULL), NULL);
 
         // 设置字体为微软雅黑
         HFONT hFont = CreateFont(
@@ -118,6 +118,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         // 设置窗口标题
         SetWindowText(hwnd, L"透明度控制者v1.2 作者：ICER233");
+
+        // 禁止窗口拉伸
+        LONG style = GetWindowLong(hwnd, GWL_STYLE);
+        style &= ~WS_SIZEBOX;  // 去除拉伸边框
+        SetWindowLong(hwnd, GWL_STYLE, style);
 
         break;
     }
