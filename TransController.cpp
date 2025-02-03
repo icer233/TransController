@@ -9,6 +9,9 @@ HWND g_hExitButton; // 退出按钮句柄
 HWND g_hBackgroundButton; // 后台运行按钮句柄
 int currentTransparency = 100;  // 当前透明度，默认100%
 
+// 钩子句柄
+HHOOK g_hMouseHook;
+
 // 设置窗口透明度
 void SetWindowTransparency(HWND hwnd, int transparency) {
     if (hwnd) {
@@ -44,34 +47,63 @@ void SetButtonFont(HWND hWnd) {
 
 // 后台运行功能
 void RunInBackground(HWND hwnd) {
-    // 将窗口最小化并隐藏
-    ShowWindow(hwnd, SW_HIDE);
+    ShowWindow(hwnd, SW_HIDE);  // 将窗口最小化并隐藏
 }
 
-// 处理鼠标滚轮调整透明度
+// 处理鼠标滚轮调整前景窗口透明度
 void HandleMouseWheel(HWND hwnd, int delta) {
-    if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {  // Alt + Shift 按下时
-        // 如果滚轮向上，增加透明度；向下则减少透明度
-        if (delta > 0 && currentTransparency < 100) {
-            currentTransparency += 2;  // 增加透明度步长改为2
+    HWND foregroundWindow = GetForegroundWindow();  // 获取当前前景窗口
+
+    if (foregroundWindow) {
+        if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {  // Alt + Shift 按下时
+            // 如果滚轮向上，增加透明度；向下则减少透明度
+            if (delta > 0 && currentTransparency < 100) {
+                currentTransparency += 2;  // 增加透明度步长改为2
+            }
+            else if (delta < 0 && currentTransparency > 0) {
+                currentTransparency -= 2;  // 减少透明度步长改为2
+            }
+
+            // 限制透明度范围在 0 到 100 之间
+            currentTransparency = max(0, min(100, currentTransparency));
+
+            // 调整当前前景窗口的透明度
+            SetWindowTransparency(foregroundWindow, currentTransparency);
+
+            // 在文本框中显示日志
+            std::wstringstream ss;
+            ss << L"已将[" << foregroundWindow << L"]的透明度设为 " << currentTransparency << L"%\n";
+            std::wstring log = ss.str();
+            SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
+            SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
         }
-        else if (delta < 0 && currentTransparency > 0) {
-            currentTransparency -= 2;  // 减少透明度步长改为2
-        }
-
-        // 限制透明度范围在 0 到 100 之间
-        currentTransparency = max(0, min(100, currentTransparency));
-
-        // 调整当前窗口的透明度
-        SetWindowTransparency(hwnd, currentTransparency);
-
-        // 在文本框中显示日志
-        std::wstringstream ss;
-        ss << L"已将[" << hwnd << L"]的透明度设为 " << currentTransparency << L"%\n";
-        std::wstring log = ss.str();
-        SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
-        SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
     }
+}
+
+// 鼠标滚轮钩子回调函数
+LRESULT CALLBACK MouseWheelProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+        MSLLHOOKSTRUCT* pMouse = (MSLLHOOKSTRUCT*)lParam;
+        if (wParam == WM_MOUSEWHEEL) {
+            int delta = GET_WHEEL_DELTA_WPARAM(pMouse->mouseData);
+            HWND foregroundWindow = GetForegroundWindow();
+            if (foregroundWindow) {
+                // 调用处理滚轮事件的函数
+                HandleMouseWheel(foregroundWindow, delta);
+            }
+        }
+    }
+    return CallNextHookEx(g_hMouseHook, nCode, wParam, lParam);
+}
+
+// 安装鼠标滚轮钩子
+void InstallMouseHook() {
+    g_hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseWheelProc, NULL, 0);  // 全局钩子
+}
+
+// 移除鼠标滚轮钩子
+void RemoveMouseHook() {
+    UnhookWindowsHookEx(g_hMouseHook);
 }
 
 // 窗口过程函数
@@ -117,12 +149,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 
         // 设置窗口标题
-        SetWindowText(hwnd, L"透明度控制者v1.2 作者：ICER233");
+        SetWindowText(hwnd, L"透明度控制者v1.2.1 作者：ICER233");
 
         // 禁止窗口拉伸
         LONG style = GetWindowLong(hwnd, GWL_STYLE);
         style &= ~WS_SIZEBOX;  // 去除拉伸边框
         SetWindowLong(hwnd, GWL_STYLE, style);
+
+        // 安装鼠标滚轮钩子
+        InstallMouseHook();
 
         break;
     }
@@ -150,15 +185,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         break;
     }
-    case WM_MOUSEWHEEL: {
-        HandleMouseWheel(hwnd, GET_WHEEL_DELTA_WPARAM(wParam));
-        break;
-    }
     case WM_DESTROY: {
-        // 注销快捷键
+        // 注销快捷键和移除钩子
         for (int i = 0; i <= 9; i++) {
             UnregisterHotKey(hwnd, i);
         }
+        RemoveMouseHook();  // 移除鼠标滚轮钩子
         PostQuitMessage(0);
         break;
     }
@@ -168,34 +200,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
-// 检查程序是否已在运行
-bool IsAnotherInstanceRunning() {
-    HANDLE hMutex = CreateMutex(NULL, TRUE, L"TransparencyAppMutex");
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
-        // 如果互斥体已经存在，说明程序已经在运行
-        CloseHandle(hMutex);
-        return true;
-    }
-    return false;
-}
-
 // 主函数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    // 检测程序是否已在运行
-    if (IsAnotherInstanceRunning()) {
-        // 如果程序已经在运行，找到它的窗口并显示
-        HWND hwndExisting = FindWindow(L"TransparencyApp", L"透明度控制者v1.2 作者：ICER233");
-        if (hwndExisting) {
-            // 激活并显示窗口
-            ShowWindow(hwndExisting, SW_RESTORE);
-            SetForegroundWindow(hwndExisting);
-        }
-        return 0;  // 当前实例退出
-    }
-
     // 初始化Common Controls
     INITCOMMONCONTROLSEX icc = { sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES };
-    InitCommonControlsEx(&icc);  // 调用 InitCommonControlsEx 函数
+    InitCommonControlsEx(&icc);
 
     // 注册窗口类
     const wchar_t* CLASS_NAME = L"TransparencyApp";
@@ -208,7 +217,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 创建窗口
     HWND hwnd = CreateWindowEx(
-        0, CLASS_NAME, L"透明度控制者v1.2 作者：ICER233",
+        0, CLASS_NAME, L"透明度控制者v1.2.1 作者：ICER233",
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 400, 300,
         NULL, NULL, hInstance, NULL
     );
