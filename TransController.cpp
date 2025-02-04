@@ -159,7 +159,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 
         // 设置窗口标题
-        SetWindowText(hwnd, L"透明度控制者v1.2.2 作者：ICER233");
+        SetWindowText(hwnd, L"透明度控制者v1.2.3 作者：ICER233");
 
         // 禁止窗口拉伸
         LONG style = GetWindowLong(hwnd, GWL_STYLE);
@@ -231,7 +231,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 创建窗口
     HWND hwnd = CreateWindowEx(
-        0, CLASS_NAME, L"透明度控制者v1.2.2 作者：ICER233",
+        0, CLASS_NAME, L"透明度控制者v1.2.3 作者：ICER233",
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 400, 300,
         NULL, NULL, hInstance, NULL
     );
