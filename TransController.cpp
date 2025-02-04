@@ -31,7 +31,7 @@ bool RegisterHotKeys(HWND hwnd) {
         ss << L"快捷键 Alt+Shift+" << i << L" 注册成功！\n";
         std::wstring log = ss.str();
         SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
-        SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
+        SendMessage(g_hEditBox, EM_REPLACESEL, FALSE, (LPARAM)log.c_str());
     }
     return true;
 }
@@ -58,8 +58,7 @@ void LogWindowTransparency(HWND hwnd, int transparency) {
     ss << L"已将[0x" << std::hex << (uintptr_t)hwnd << std::dec << L"][" << title << L"]的不透明度设为 " << transparency << L"%\n";
     std::wstring log = ss.str();
     SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
-    SendMessage(g_hEditBox, EM_REPLACESEL, 0, 0);
-    SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
+    SendMessage(g_hEditBox, EM_REPLACESEL, FALSE, (LPARAM)log.c_str());
 }
 
 // 处理鼠标滚轮调整前景窗口不透明度
