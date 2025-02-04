@@ -7,12 +7,11 @@
 HWND g_hEditBox; // 文本框句柄
 HWND g_hExitButton; // 退出按钮句柄
 HWND g_hBackgroundButton; // 后台运行按钮句柄
-int currentTransparency = 100;  // 当前透明度，默认100%
+int currentTransparency = 100;  // 当前不透明度，默认100%
+HHOOK g_hMouseHook; // 鼠标钩子
+const wchar_t windowTitle[25] = L"透明度控制者v1.2.4 作者：ICER233";
 
-// 钩子句柄
-HHOOK g_hMouseHook;
-
-// 设置窗口透明度
+// 设置窗口不透明度
 void SetWindowTransparency(HWND hwnd, int transparency) {
     if (hwnd) {
         LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
@@ -24,7 +23,7 @@ void SetWindowTransparency(HWND hwnd, int transparency) {
 // 注册全局快捷键
 bool RegisterHotKeys(HWND hwnd) {
     for (int i = 0; i <= 9; i++) {
-        if (!RegisterHotKey(hwnd, i, MOD_ALT | MOD_SHIFT, 0x30 + i)) { // 使用 Alt + Shift + 数字键
+        if (!RegisterHotKey(hwnd, i, MOD_ALT | MOD_SHIFT, 0x30 + i)) {
             return false;
         }
         std::wstringstream ss;
@@ -54,18 +53,17 @@ void LogWindowTransparency(HWND hwnd, int transparency) {
     WCHAR title[256];
     GetWindowTextW(hwnd, title, 256);
     std::wstringstream ss;
-    ss << L"已将[0x" << std::hex << (uintptr_t)hwnd << std::dec << L"][" << title << L"]的透明度设为 " << transparency << L"%\n";
+    ss << L"已将[0x" << std::hex << (uintptr_t)hwnd << std::dec << L"][" << title << L"]的不透明度设为 " << transparency << L"%\n";
     std::wstring log = ss.str();
     SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
     SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
 }
 
-// 处理鼠标滚轮调整前景窗口透明度
+// 处理鼠标滚轮调整前景窗口不透明度
 void HandleMouseWheel(HWND hwnd, int delta) {
     HWND foregroundWindow = GetForegroundWindow();
     if (foregroundWindow) {
-        if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {  // Alt + Shift 按下时
-            // 如果滚轮向上，增加透明度；向下则减少透明度
+        if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {
             if (delta > 0 && currentTransparency < 100) {
                 currentTransparency += 2;
             }
@@ -87,7 +85,6 @@ LRESULT CALLBACK MouseWheelProc(int nCode, WPARAM wParam, LPARAM lParam) {
             int delta = GET_WHEEL_DELTA_WPARAM(pMouse->mouseData);
             HWND foregroundWindow = GetForegroundWindow();
             if (foregroundWindow) {
-                // 调用处理滚轮事件的函数
                 HandleMouseWheel(foregroundWindow, delta);
             }
         }
@@ -143,8 +140,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             FIXED_PITCH | FF_DONTCARE, L"微软雅黑"
         );
         SendMessage(g_hEditBox, WM_SETFONT, (WPARAM)hFont, TRUE);
-
-        // 设置按钮字体为微软雅黑
         SetButtonFont(g_hBackgroundButton);
         SetButtonFont(g_hExitButton);
 
@@ -154,21 +149,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             PostQuitMessage(0);
         }
 
-        // 设置窗口图标
+        // 设置窗口信息
         HICON hIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(101)); // 需要准备一个资源ID为101的图标
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
-
-        // 设置窗口标题
-        SetWindowText(hwnd, L"透明度控制者v1.2.3 作者：ICER233");
+        SetWindowText(hwnd, windowTitle);
 
         // 禁止窗口拉伸
         LONG style = GetWindowLong(hwnd, GWL_STYLE);
         style &= ~WS_SIZEBOX;  // 去除拉伸边框
         SetWindowLong(hwnd, GWL_STYLE, style);
 
-        // 安装鼠标滚轮钩子
         InstallMouseHook();
-
         break;
     }
     case WM_HOTKEY: {
@@ -231,7 +222,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 创建窗口
     HWND hwnd = CreateWindowEx(
-        0, CLASS_NAME, L"透明度控制者v1.2.3 作者：ICER233",
+        0, CLASS_NAME, windowTitle,
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 400, 300,
         NULL, NULL, hInstance, NULL
     );
