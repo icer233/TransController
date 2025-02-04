@@ -1,7 +1,7 @@
 #include <Windows.h>
 #include <string>
 #include <sstream>
-#include <commctrl.h>  // 必须包含此头文件用于按钮控件和托盘图标
+#include <commctrl.h>
 
 // 全局变量
 HWND g_hEditBox; // 文本框句柄
@@ -47,35 +47,34 @@ void SetButtonFont(HWND hWnd) {
 
 // 后台运行功能
 void RunInBackground(HWND hwnd) {
-    ShowWindow(hwnd, SW_HIDE);  // 将窗口最小化并隐藏
+    ShowWindow(hwnd, SW_HIDE);
+}
+
+void LogWindowTransparency(HWND hwnd, int transparency) {
+    WCHAR title[256];
+    GetWindowTextW(hwnd, title, 256);
+    std::wstringstream ss;
+    ss << L"已将[0x" << std::hex << (uintptr_t)hwnd << std::dec << L"][" << title << L"]的透明度设为 " << transparency << L"%\n";
+    std::wstring log = ss.str();
+    SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
+    SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
 }
 
 // 处理鼠标滚轮调整前景窗口透明度
 void HandleMouseWheel(HWND hwnd, int delta) {
-    HWND foregroundWindow = GetForegroundWindow();  // 获取当前前景窗口
-
+    HWND foregroundWindow = GetForegroundWindow();
     if (foregroundWindow) {
         if (GetAsyncKeyState(VK_MENU) & 0x8000 && GetAsyncKeyState(VK_SHIFT) & 0x8000) {  // Alt + Shift 按下时
             // 如果滚轮向上，增加透明度；向下则减少透明度
             if (delta > 0 && currentTransparency < 100) {
-                currentTransparency += 2;  // 增加透明度步长改为2
+                currentTransparency += 2;
             }
             else if (delta < 0 && currentTransparency > 0) {
-                currentTransparency -= 2;  // 减少透明度步长改为2
+                currentTransparency -= 2;
             }
-
-            // 限制透明度范围在 0 到 100 之间
             currentTransparency = max(0, min(100, currentTransparency));
-
-            // 调整当前前景窗口的透明度
             SetWindowTransparency(foregroundWindow, currentTransparency);
-
-            // 在文本框中显示日志
-            std::wstringstream ss;
-            ss << L"已将[" << foregroundWindow << L"]的透明度设为 " << currentTransparency << L"%\n";
-            std::wstring log = ss.str();
-            SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
-            SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
+            LogWindowTransparency(foregroundWindow, currentTransparency);
         }
     }
 }
@@ -177,13 +176,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (foregroundWindow) {
             int transparency = 100 - (static_cast<int>(wParam) * 10);
             SetWindowTransparency(foregroundWindow, transparency);
-
-            // 在文本框中显示日志
-            std::wstringstream ss;
-            ss << L"已将[" << foregroundWindow << L"]的透明度设为 " << transparency << L"%\n";
-            std::wstring log = ss.str();
-            SendMessage(g_hEditBox, EM_SETSEL, -1, -1);
-            SendMessage(g_hEditBox, EM_REPLACESEL, 0, (LPARAM)log.c_str());
+            LogWindowTransparency(foregroundWindow, transparency);
         }
         break;
     }
@@ -196,12 +189,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         break;
     }
-    case WM_DESTROY: {
-        // 注销快捷键和移除钩子
+    case WM_DESTROY: {// 注销快捷键和移除钩子
         for (int i = 0; i <= 9; i++) {
             UnregisterHotKey(hwnd, i);
         }
-        RemoveMouseHook();  // 移除鼠标滚轮钩子
+        RemoveMouseHook(); 
         PostQuitMessage(0);
         break;
     }
@@ -258,6 +250,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
     return 0;
 }
