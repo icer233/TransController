@@ -106,6 +106,17 @@ void RemoveMouseHook() {
     UnhookWindowsHookEx(g_hMouseHook);
 }
 
+// 检查程序是否已在运行
+bool IsAnotherInstanceRunning() {
+    HANDLE hMutex = CreateMutex(NULL, TRUE, L"TransparencyAppMutex");
+    if (GetLastError() == ERROR_ALREADY_EXISTS) {
+        // 如果互斥体已经存在，说明程序已经在运行
+        CloseHandle(hMutex);
+        return true;
+    }
+    return false;
+}
+
 // 窗口过程函数
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
@@ -149,7 +160,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
 
         // 设置窗口标题
-        SetWindowText(hwnd, L"透明度控制者v1.2.1 作者：ICER233");
+        SetWindowText(hwnd, L"透明度控制者v1.2.2 作者：ICER233");
 
         // 禁止窗口拉伸
         LONG style = GetWindowLong(hwnd, GWL_STYLE);
@@ -202,6 +213,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
 // 主函数
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    // 检查是否有另一个实例在运行
+    if (IsAnotherInstanceRunning()) {
+        MessageBox(NULL, L"程序已在运行！", L"提示", MB_OK);
+        HWND hwnd = FindWindow(L"TransparencyApp", NULL);
+        if (hwnd) {
+            ShowWindow(hwnd, SW_RESTORE);  // 显示已存在的窗口
+            SetForegroundWindow(hwnd);      // 设置为前景窗口
+        }
+        return 0;
+    }
+
     // 初始化Common Controls
     INITCOMMONCONTROLSEX icc = { sizeof(INITCOMMONCONTROLSEX), ICC_WIN95_CLASSES };
     InitCommonControlsEx(&icc);
@@ -217,7 +239,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // 创建窗口
     HWND hwnd = CreateWindowEx(
-        0, CLASS_NAME, L"透明度控制者v1.2.1 作者：ICER233",
+        0, CLASS_NAME, L"透明度控制者v1.2.2 作者：ICER233",
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 400, 300,
         NULL, NULL, hInstance, NULL
     );
